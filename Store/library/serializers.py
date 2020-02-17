@@ -2,6 +2,7 @@ from rest_framework import serializers
 from .models import BooksIssued, Author, Book
 from rest_framework import exceptions
 from django.contrib.auth import authenticate
+from django.contrib.auth.models import User
 
 
 class BookSerializer(serializers.ModelSerializer):
@@ -20,6 +21,12 @@ class IssueSerializer(serializers.ModelSerializer):
     class Meta:
         model = BooksIssued
         fields = ['id', 'book_id', 'person_id', 'issue_date', 'submission_date']
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id','username','first_name','last_name']
+
 
 
 class LoginSerializer(serializers.Serializer):

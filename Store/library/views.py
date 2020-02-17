@@ -2,7 +2,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.viewsets import ViewSet
 from .models import Book, Author, BooksIssued, User
-from .serializers import BookSerializer, AuthorSerializer, IssueSerializer
+from .serializers import BookSerializer, AuthorSerializer, IssueSerializer, UserSerializer
 from rest_framework.views import APIView
 from .serializers import LoginSerializer
 from django.contrib.auth import login as django_login, logout as django_logout
@@ -12,12 +12,17 @@ from rest_framework.response import Response
 
 
 class BookViewSet(ViewSet):
+    queryset = Book.objects.all()
     serializer_class = BookSerializer
+
     authentication_classes = (TokenAuthentication,)
     permission_classes = (IsAuthenticated,)
 
-
     def list(self, request):
+        # queryset = Book.objects.all()
+        # serializer = BookSerializer(queryset, many=True)
+        # return Response(serializer.data)
+        #
         if request.user.is_staff:
             queryset = Book.objects.all()
             serializer = BookSerializer(queryset, many=True)
@@ -25,25 +30,35 @@ class BookViewSet(ViewSet):
 
             book_ids = BooksIssued.objects.filter(person_id=request.user).values_list('book_id', flat=True)
             queryset = Book.objects.filter(id__in=list(book_ids))
-            serializer = BookSerializer(queryset,many=True)
+            serializer = BookSerializer(queryset, many=True)
         return Response(serializer.data)
 
     def create(self, request):
-        data = request.data
-        print(data)
-        queryset = Book.objects.create(book_name=data['book_name'], price=data['price'])
-        serializer = BookSerializer(queryset)
-        return Response(serializer.data)
+        if request.user.is_staff:
+            data = request.data
+            print(data)
+            queryset = Book.objects.create(book_name=data['book_name'], price=data['price'])
+            serializer = BookSerializer(queryset)
+            return Response(serializer.data)
+        else:
+            return Response({'a': 'b'})
 
     def retrieve(self, request, pk=None):
-        queryset = Book.objects.get(id=pk)
-        print(queryset)
-        serializer = BookSerializer(queryset)
-        return Response(serializer.data)
+        if request.user.is_staff:
+            queryset = Book.objects.get(id=pk)
+            print(queryset)
+            serializer = BookSerializer(queryset)
+            return Response(serializer.data)
+        else:
+            return Response({'a': 'b'})
 
     def destroy(self, request, pk=None):
-        queryset = Book.objects.get(id=pk).delete()
-        return Response({'message': 'successfully deleted', 'status': 200, 'queryset': queryset})
+        if request.user.is_staff:
+            queryset = Book.objects.get(id=pk).delete()
+            return Response({'message': 'successfully deleted', 'status': 200, 'queryset': queryset})
+
+        else:
+            return Response({'a': 'b'})
 
     # def partial_update(self, request, pk=None):
     #     book = get_object_or_404(Book, pk=pk)
@@ -53,49 +68,82 @@ class BookViewSet(ViewSet):
     #     return Response(serializer.data)
 
     def update(self, request, pk=None):
-        book = get_object_or_404(Book, pk=pk)
-        book.book_name = request.data['book_name']
-        book.price = request.data['price']
-        book.save()
-        serializer = BookSerializer(book)
-        return Response(serializer.data)
+        if request.user.is_staff:
+            book = get_object_or_404(Book, pk=pk)
+            book.book_name = request.data['book_name']
+            book.price = request.data['price']
+            book.save()
+            serializer = BookSerializer(book)
+            return Response(serializer.data)
+        else:
+            return Response({'a': 'b'})
 
 
 class AuthorViewSet(ViewSet):
     queryset = Author.objects.all()
     serializer_class = AuthorSerializer
+    authentication_classes = (TokenAuthentication,)
+    permission_classes = (IsAuthenticated,)
 
     def list(self, request):
+
         queryset = Author.objects.all()
         serializer = AuthorSerializer(queryset, many=True)
         return Response(serializer.data)
 
     def create(self, request):
-        data = request.data
-        author = Author.objects.create(first_name=data['first_name'], last_name=data['last_name'])
-        author.book.add(data['book'])
-        author.save()
-        serializer = AuthorSerializer(author)
-        return Response(serializer.data)
+        if request.user.is_staff:
+            data = request.data
+            author = Author.objects.create(first_name=data['first_name'], last_name=data['last_name'])
+            author.book.add(data['book'])
+            author.save()
+            serializer = AuthorSerializer(author)
+            return Response(serializer.data)
+        else:
+            return Response({'msg': 'data available for admin only'})
 
     def retrieve(self, request, pk=None):
-        queryset = Author.objects.get(id=pk)
-        print(queryset)
-        serializer = AuthorSerializer(queryset)
-        return Response(serializer.data)
+        if request.user.is_staff:
+            queryset = Author.objects.get(id=pk)
+            print(queryset)
+            serializer = AuthorSerializer(queryset)
+            return Response(serializer.data)
+        else:
+            return Response({'msg': 'data available for admin only'})
 
     def destroy(self, request, pk=None):
-        queryset = Author.objects.get(id=pk).delete()
-        return Response({'message': 'successfully deleted', 'status': 200, 'queryset': queryset})
+        if request.user.is_staff:
+            queryset = Author.objects.get(id=pk).delete()
+            return Response({'message': 'successfully deleted', 'status': 200, 'queryset': queryset})
+        else:
+            return Response({'msg': 'data available for admin only'})
+
 
     def update(self, request, pk=None):
-        author = get_object_or_404(Author, pk=pk)
-        author.first_name = request.data['first_name']
-        author.last_name = request.data['last_name']
-        author.book.add(request.data['book'])
-        author.save()
-        serializer = AuthorSerializer(author)
-        return Response(serializer.data)
+        if request.user.is_staff:
+            author = get_object_or_404(Author, pk=pk)
+            author.first_name = request.data['first_name']
+            author.last_name = request.data['last_name']
+            author.book.set(request.data['book'])
+            author.save()
+            serializer = AuthorSerializer(author)
+            return Response(serializer.data)
+        else:
+            return Response({'msg': 'data available for admin only'})
+
+
+class UserViewSet(ViewSet):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+
+    def list(self, request):
+        if request.user.is_staff:
+            queryset = User.objects.all()
+            serializer = self.serializer_class(queryset, many=True)
+
+            return Response(serializer.data)
+        else:
+            return Response({'msg':'not allowed'})
 
 
 class IssueViewSet(ViewSet):
@@ -103,41 +151,58 @@ class IssueViewSet(ViewSet):
     serializer_class = IssueSerializer
 
     def list(self, request):
-        queryset = BooksIssued.objects.all()
-        serializer = self.serializer_class(queryset, many=True)
-
-        return Response(serializer.data)
+        if request.user.is_staff:
+            queryset = BooksIssued.objects.all()
+            serializer = self.serializer_class(queryset, many=True)
+            return Response(serializer.data)
+        else:
+            return Response({'a':'d'})
 
     def retrieve(self, request, pk=None):
-        queryset = BooksIssued.objects.get(id=pk)
-        print(queryset)
-        serializer = IssueSerializer(queryset)
-        return Response(serializer.data)
+        if request.user.is_staff:
+            queryset = BooksIssued.objects.get(id=pk)
+            print(queryset)
+            serializer = IssueSerializer(queryset)
+            return Response(serializer.data)
+
+        else:
+            return Response({'msg': 'data available for admin only'})
 
     def destroy(self, request, pk=None):
-        queryset = BooksIssued.objects.get(id=pk).delete()
-        return Response({'message': 'successfully deleted', 'status': 200, 'queryset': queryset})
+        if request.user.is_staff:
+            queryset = BooksIssued.objects.get(id=pk).delete()
+            return Response({'message': 'successfully deleted', 'status': 200, 'queryset': queryset})
+        else:
+            return Response({'msg': 'data available for admin only'})
+
 
     def create(self, request):
-        book = Book.objects.get(id=request.data['book_id'])
-        person = User.objects.get(id=request.data['person_id'])
-        issue = BooksIssued.objects.create(book_id=book, person_id=person,
-                                           issue_date=request.data['issue_date'],
-                                           submission_date=request.data['submission_date'])
-        issue.save()
-        serializer = IssueSerializer(issue)
-        return Response(serializer.data)
+        if request.user.is_staff:
+            book = Book.objects.get(id=request.data['book_id'])
+            person = User.objects.get(id=request.data['person_id'])
+            issue = BooksIssued.objects.create(book_id=book, person_id=person,
+                                               issue_date=request.data['issue_date'],
+                                               submission_date=request.data['submission_date'])
+            issue.save()
+            serializer = IssueSerializer(issue)
+            return Response(serializer.data)
+        else:
+            return Response({'msg': 'data available for admin only'})
 
     def update(self, request, pk=None):
-        issue = get_object_or_404(BooksIssued, pk=pk)
-        issue.issue_date = request.data['issue_date']
-        issue.submission_date = request.data['submission_date']
-        issue.book_id = Book.objects.get(id=request.data['book_id'])
-        issue.person_id = User.objects.get(id=request.data['person_id'])
+        if request.user.is_staff:
+            issue = get_object_or_404(BooksIssued, pk=pk)
+            issue.issue_date = request.data['issue_date']
+            issue.submission_date = request.data['submission_date']
+            issue.book_id = Book.objects.get(id=request.data['book_id'])
+            issue.person_id = User.objects.get(id=request.data['person_id'])
 
-        issue.save()
-        serializer = IssueSerializer(issue)
-        return Response(serializer.data)
+            issue.save()
+            serializer = IssueSerializer(issue)
+            return Response(serializer.data)
+        else:
+            return Response({'msg': 'data available for admin only'})
+
 
 
 class ObtainAuthToken(APIView):

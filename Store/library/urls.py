@@ -3,12 +3,13 @@ from django.urls import include
 from rest_framework.routers import DefaultRouter
 from django.conf.urls import url
 
-from .views import BookViewSet, AuthorViewSet, IssueViewSet, ObtainAuthToken, LogoutView  # ,LoginView, LogoutView
+from .views import BookViewSet, AuthorViewSet, IssueViewSet, ObtainAuthToken, LogoutView,UserViewSet  # ,LoginView, LogoutView
 
 router = DefaultRouter()
 router.register('book', BookViewSet, basename='book')
 router.register('author', AuthorViewSet, basename='author')
 router.register('issue', IssueViewSet, basename='issue')
+router.register('user',UserViewSet,basename='user')
 
 urlpatterns = [
     url('', include(router.urls)),
